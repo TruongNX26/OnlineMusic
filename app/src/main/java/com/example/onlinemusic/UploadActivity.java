@@ -11,6 +11,11 @@ import android.os.Bundle;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.example.onlinemusic.retrofit.ApiUtils;
+import com.example.onlinemusic.retrofit.RetrofitClient;
+import com.example.onlinemusic.retrofit.ApiService;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -49,7 +54,7 @@ public class UploadActivity extends AppCompatActivity {
 
     private void openFileChooser() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("*/*");
+        intent.setType("audio/*");
         startActivityForResult(intent, REQUEST_CODE);
     }
 
@@ -82,7 +87,7 @@ public class UploadActivity extends AppCompatActivity {
 
     private void setButtonUploadListener() {
         btnUpload.setOnClickListener(view -> {
-            dialog.show();
+
             uploadImage();
         });
     }
@@ -94,34 +99,49 @@ public class UploadActivity extends AppCompatActivity {
                 String name = edtName.getText().toString();
                 String singer = edtSinger.getText().toString();
 
+                if(name.isEmpty() || singer.isEmpty() || uri == null) return;
+
+                dialog.show();
+
                 byte[] byteData = null;
+
                 try {
                     InputStream inputStream = getContentResolver().openInputStream(uri);
                     byteData = toByteArray(inputStream);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                } catch (IOException e) { e.printStackTrace(); }
 
                 RequestBody dataBody = RequestBody.create(MediaType.parse("audio/*"), byteData);
-                RequestBody nameBody = RequestBody.create(MediaType.parse("text/plain"), name);
-                RequestBody singerBody = RequestBody.create(MediaType.parse("text/plain"), singer);
 
-                MultipartBody.Part dataPart = MultipartBody.Part.createFormData("data", txtFilePath.getText().toString(), dataBody);
+                MultipartBody.Part dataPart
+                        = MultipartBody.Part.createFormData("data", txtFilePath.getText().toString(), dataBody);
 
-                Retrofit retrofit = NetworkClient.getRetrofit();
-                UploadApi uploadApi = retrofit.create(UploadApi.class);
-                Call call = uploadApi.uploadImage(dataPart, nameBody, singerBody);
+                ApiService apiService = ApiUtils.getService();
+
+                Call call = apiService.uploadImage(dataPart, name, singer);
+
                 call.enqueue(new Callback() {
                     @Override
                     public void onResponse(Call call, Response response) {
+                        
+                        if(response.code() == 200) {
+                            Toast.makeText(UploadActivity.this, "Song uploaded successfully", Toast.LENGTH_SHORT).show();
+
+                            MainActivity.getInstance().finish();
+
+                            startActivity(new Intent(UploadActivity.this, MainActivity.class));
+
+                            UploadActivity.this.finish();
+
+                        } else
+                            Toast.makeText(UploadActivity.this, "Uploading failed", Toast.LENGTH_SHORT).show();
+
                     }
 
                     @Override
                     public void onFailure(Call call, Throwable t) {
+                        Toast.makeText(UploadActivity.this, t.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
-
-                UploadActivity.this.finish();
             }
         }).start();
     }
@@ -139,10 +159,11 @@ public class UploadActivity extends AppCompatActivity {
     }
 
     private byte[] toByteArray(InputStream inputStream) throws IOException {
+
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 
         int nRead;
-        byte[] data = new byte[4];
+        byte[] data = new byte[1024];
 
         while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
             buffer.write(data, 0, nRead);

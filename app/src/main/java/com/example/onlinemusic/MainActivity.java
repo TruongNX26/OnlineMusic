@@ -2,6 +2,7 @@ package com.example.onlinemusic;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.MotionEvent;
@@ -23,10 +24,17 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static Activity instance;
+
+    public static Activity getInstance() {
+        return instance;
+    }
 
     private RequestQueue requestQueue;
 
@@ -40,6 +48,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        instance = this;
+
         AppUtil.makeStatusBarTransparent(this);
         mapping();
 
@@ -81,7 +92,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void setButtonAddListener() {
         btnAdd.setOnClickListener(view -> {
-            startActivity(new Intent(this, UploadActivity.class));
+            Intent intent = new Intent(this, UploadActivity.class);
+            startActivity(intent);
         });
     }
 
